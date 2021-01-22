@@ -1,0 +1,124 @@
+// Script assets have changed for v2.3.0 see
+// https://help.yoyogames.com/hc/en-us/articles/360005277377 for more information
+function rbnc_Send_Input(){
+	global.rbnc_frame_current = ds_list_size(global.rbnc_input_history)-1;
+	
+	var inputs = "";
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pA[global.rbnc_position]));
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pB[global.rbnc_position]));
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pC[global.rbnc_position]));
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pD[global.rbnc_position]));
+	
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pl[global.rbnc_position]));
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pr[global.rbnc_position]));
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pu[global.rbnc_position]));
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pd[global.rbnc_position]));
+	
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pL1[global.rbnc_position]));
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pR1[global.rbnc_position]));
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pL2[global.rbnc_position]));
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pR2[global.rbnc_position]));
+	
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pstart[global.rbnc_position]));
+	inputs += string(button_check(global.gamepad[global.rbnc_position],global.pselect[global.rbnc_position]));
+	
+	buffer_seek(global.rbnc_input_buff, buffer_seek_start, 0);
+	buffer_write(global.rbnc_input_buff, buffer_s16, nc_input);
+	buffer_write(global.rbnc_input_buff, buffer_s32, global.rbnc_frame_current);
+	buffer_write(global.rbnc_input_buff, buffer_string, inputs);
+	network_send_packet(global.rbnc_net,global.rbnc_input_buff,buffer_get_size(global.rbnc_input_buff));
+	
+	ds_list_add(global.rbnc_input_history,inputs);
+	
+	var aPos = abs(global.rbnc_position-1);
+	inputs = "";
+	inputs += string(button_check(global.gamepad[aPos],global.pA[aPos]));
+	inputs += string(button_check(global.gamepad[aPos],global.pB[aPos]));
+	inputs += string(button_check(global.gamepad[aPos],global.pC[aPos]));
+	inputs += string(button_check(global.gamepad[aPos],global.pD[aPos]));
+	
+	inputs += string(button_check(global.gamepad[aPos],global.pl[aPos]));
+	inputs += string(button_check(global.gamepad[aPos],global.pr[aPos]));
+	inputs += string(button_check(global.gamepad[aPos],global.pu[aPos]));
+	inputs += string(button_check(global.gamepad[aPos],global.pd[aPos]));
+	
+	inputs += string(button_check(global.gamepad[aPos],global.pL1[aPos]));
+	inputs += string(button_check(global.gamepad[aPos],global.pR1[aPos]));
+	inputs += string(button_check(global.gamepad[aPos],global.pL2[aPos]));
+	inputs += string(button_check(global.gamepad[aPos],global.pR2[aPos]));
+	
+	inputs += string(button_check(global.gamepad[aPos],global.pstart[aPos]));
+	inputs += string(button_check(global.gamepad[aPos],global.pselect[aPos]));
+	
+	ds_list_add(global.rbnc_other_input_history,inputs);
+}
+
+function rbnc_Receive_Input(){
+	var input_id = buffer_read(argument0,buffer_s32);
+	var input_array = buffer_read(argument0,buffer_string);
+	var input_accurate = true;
+	var aPos = abs(global.rbnc_position-1);
+	
+	//Set inputs
+	for (var ii=0;ii<14;ii++){
+		global.network_Input[ii] = real(string_char_at(input_array,ii+1));
+	}
+	
+	if room != roo_MainMenu{
+		var gametime = ds_list_size(global.rbnc_game_state_history)-1;
+		var input_stored = ds_list_find_value(global.rbnc_other_input_history,input_id);
+		var input_size = ds_list_size(global.rbnc_input_history);
+		global.rbnc_latency = gametime-input_id;
+		var latency_comp = global.rbnc_latency;
+		
+		if gametime >= input_id
+			input_accurate = input_array == input_stored;
+		
+		if !input_accurate && gametime > 0 && !is_undefined(input_stored)
+		&& !is_undefined(ds_list_find_value(global.rbnc_game_state_history,input_id)){
+			ev_lgs_cb(input_id);
+		
+			for(var i = input_id; i < min(input_id+4,input_size); i++){				
+				//Set local inputs from input_history
+				var local_input_id = ds_list_find_value(global.rbnc_input_history,i);
+				global.pA[global.rbnc_position] = real(string_char_at(local_input_id,1));
+				global.pB[global.rbnc_position] = real(string_char_at(local_input_id,2));
+				global.pC[global.rbnc_position] = real(string_char_at(local_input_id,3));
+				global.pD[global.rbnc_position] = real(string_char_at(local_input_id,4));
+			
+				global.pl[global.rbnc_position] = real(string_char_at(local_input_id,5));
+				global.pr[global.rbnc_position] = real(string_char_at(local_input_id,6));
+				global.pu[global.rbnc_position] = real(string_char_at(local_input_id,7));
+				global.pd[global.rbnc_position] = real(string_char_at(local_input_id,8));
+			
+				global.pL1[global.rbnc_position] = real(string_char_at(local_input_id,9));
+				global.pR1[global.rbnc_position] = real(string_char_at(local_input_id,10));
+				global.pL2[global.rbnc_position] = real(string_char_at(local_input_id,11));
+				global.pR2[global.rbnc_position] = real(string_char_at(local_input_id,12));
+			
+				global.pstart[global.rbnc_position] = real(string_char_at(local_input_id,13));
+				global.pselect[global.rbnc_position] = real(string_char_at(local_input_id,14));
+			
+				//Set previous network inputs
+				var nil = ds_list_find_value(global.rbnc_other_input_history,i-1);
+				if i = input_id && !is_undefined(nil){
+					var input_array_previous = nil;
+					for (var ii=0;ii<14;ii++){
+						global.network_Input_Last[ii] = real(string_char_at(input_array_previous,ii+1));
+					}
+				}
+			
+				with(obj_PlayerParent){
+					player_Controller_AdvanceFrame();
+				}
+			
+				ds_list_insert(global.rbnc_other_input_history,i,input_array);
+				ds_list_insert(global.rbnc_game_state_history,i,ev_sgs_cb());
+			}
+		}
+		
+		for(var i=global.rbnc_frame_current;i<global.rbnc_frame_current+latency_comp;i++){
+			ds_list_insert(global.rbnc_other_input_history,i,input_array);
+		}
+	}
+}

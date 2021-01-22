@@ -1,0 +1,63 @@
+// Script assets have changed for v2.3.0 see
+// https://help.yoyogames.com/hc/en-us/articles/360005277377 for more information
+function rbnc_Function(){
+	var sock = ds_map_find_value(async_load,"socket");
+	//var ip = ds_map_find_value(async_load,"ip");
+	var type = ds_map_find_value(async_load,"type");
+	var event_buff = -1;
+	var event_id = -1;
+
+	switch(type){
+	    case network_type_connect:
+	        global.rbnc_net = sock;
+        
+	        var buff = buffer_create(48,buffer_fixed,1);
+	        buffer_write(buff,buffer_s16,nc_user_info);
+	        buffer_write(buff,buffer_string,username);
+	        buffer_write(buff,buffer_s16,global.rbnc_position);
+        
+	        network_send_packet(global.rbnc_net,buff,buffer_tell(buff));
+	        buffer_delete(buff);
+	    break;
+    
+	    case network_type_disconnect:
+			room_goto(roo_MainMenu);
+	        global.rbnc_net = -1;
+			instance_destroy();
+	    break;
+    
+	    case network_type_data:
+			event_buff = ds_map_find_value(async_load,"buffer");
+			event_id = buffer_read(event_buff,buffer_s16);
+			
+			switch(event_id){
+				case nc_user_info:
+					if room = roo_MainMenu{
+	                    global.rbnc_opponent_id = buffer_read(event_buff,buffer_string);
+	                    ctrl_Menu.menu_set = 5;
+	                    global.mode = "Versus";
+						
+						if purpose = "client"{
+							global.rbnc_position = abs(buffer_read(event_buff,buffer_s16)-1);
+							
+							var buff = buffer_create(16,buffer_grow,1);
+		                    buffer_write(buff,buffer_s16,nc_user_info);
+		                    buffer_write(buff,buffer_string,username);
+                    
+		                    network_send_packet(global.rbnc_net,buff,buffer_tell(buff));
+		                    buffer_delete(buff);
+						}
+	                }
+				break;
+				
+				case nc_latency:
+					global.rbnc_other_latency = buffer_read(event_buff,buffer_s16);
+				break;
+				
+				case nc_input:
+					rbnc_Receive_Input(event_buff);
+				break;
+			}
+		break;
+	}
+}

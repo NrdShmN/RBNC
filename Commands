@@ -1,0 +1,64 @@
+function rbnc_Start() {
+	//Initialization
+	global.rbnc_port = 11001;
+	global.rbnc_opponent_id = "";
+	global.rbnc_latency = -1;
+	global.rbnc_position = choose(0,1);
+	global.rbnc_latency = 0;
+	global.rbnc_other_latency = 0;
+	
+	global.rbnc_frame_current = 0;
+	global.rbnc_game_state_history = ds_list_create();
+	global.rbnc_input_history = ds_list_create();
+	global.rbnc_other_input_history = ds_list_create();
+	global.rbnc_rollbacks = 0;
+	
+	global.rbnc_input_buff = buffer_create(208,buffer_grow,1);
+	global.rbnc_input_address = buffer_get_address(global.rbnc_input_buff);
+	global.rbnc_advance_buff = buffer_create(1,buffer_grow,1);
+	global.rbnc_advance_address = buffer_get_address(global.rbnc_advance_buff);
+	
+	for (var n=0;n<2;n++){
+	    for (var i=0;i<14;i++){
+	        //Input for player to interpret;
+	        global.network_Input[i] = 0;
+	        global.network_Input_Last[i] = 0;
+	    }
+	}
+	
+	//Netcodes
+	#macro nc_user_info 0
+	#macro nc_input 1
+	#macro nc_initialize_round 2
+	#macro nc_game_state 100
+	#macro nc_latency 1000
+	#macro rbnc_type network_socket_tcp
+	
+	global.online = true;
+}
+
+function rbnc_Initialize(){
+	switch(global.ev_rbnc.purpose){
+		case "server":
+			global.rbnc_server = network_create_server(rbnc_type,global.rbnc_port,1);
+			global.rbnc_net = -1;
+		break;
+		
+		case "client":
+			global.rbnc_net = network_create_socket(rbnc_type);
+			global.rbnc_ip = "127.0.0.1";
+			global.rbnc_connection = network_connect_async(global.rbnc_net,global.rbnc_ip,global.rbnc_port); 
+		break;
+	}
+	
+	networkOn = true;
+}
+
+function rbnc_Send_Latency(){
+	var buff = buffer_create(48,buffer_fixed,1);
+	buffer_write(buff,buffer_s16,nc_latency);
+	buffer_write(buff,buffer_s16,global.rbnc_latency);
+        
+	network_send_packet(global.rbnc_net,buff,buffer_tell(buff));
+	buffer_delete(buff);
+}

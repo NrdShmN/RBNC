@@ -1,0 +1,37 @@
+/*ctrl_RBNC object does the following:*/
+
+//Beginning of each step/frame
+if room = roo_MainMenu{
+    if floor(ctrl_Menu.menu_set) = 5{
+        rbnc_Send_Input();
+    }
+}else if instance_exists(obj_PlayerParent){
+	with(obj_PlayerParent){
+		var identnum = string_char_at(ident,2);
+		var local_player = real(string_char_at(ident,2))-1 = global.rbnc_position;
+		if local_player
+			rbnc_Send_Input();
+	}
+	ds_list_add(global.rbnc_game_state_history,ev_sgs_cb());
+	rbnc_Send_Latency();
+}
+
+/*Controller object doest the following:*/
+
+//During draw_gui, the very last thing to be processed each frame:
+if global.online{
+	var latency_max = 4;
+	if global.rbnc_latency > latency_max{
+		var ih_size = ds_list_size(global.rbnc_input_history);
+		var ih_disc = global.rbnc_latency-latency_max+2;
+		for(var hrb = ih_size-1;hrb>ih_size-ih_disc;hrb--){
+			ds_list_delete(global.rbnc_input_history,hrb);
+			ds_list_delete(global.rbnc_game_state_history,hrb);
+		}
+		
+		ev_lgs_cb(ds_list_size(global.rbnc_game_state_history)-1);
+	}
+	with(obj_PlayerParent){
+		player_Controller_AdvanceFrame();
+	}
+}
